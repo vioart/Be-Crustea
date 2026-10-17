@@ -18,6 +18,12 @@ CREATE TYPE faq_category AS ENUM (
     'partnership'
 );
 
+CREATE TYPE product_category AS ENUM (
+    'hardware',
+    'software',
+    'processed_product'
+);
+
 -- ============================================
 -- USERS
 -- ============================================
@@ -82,26 +88,12 @@ CREATE INDEX idx_news_author_id
     ON news(author_id);
 
 -- ============================================
--- PRODUCT CATEGORIES
--- ============================================
-
-CREATE TABLE product_categories (
-    id BIGSERIAL PRIMARY KEY,
-    slug VARCHAR(255) NOT NULL UNIQUE,
-    name_idn VARCHAR(255) NOT NULL,
-    name_en VARCHAR(255) NOT NULL,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
-);
-
--- ============================================
 -- PRODUCTS
 -- ============================================
 
 CREATE TABLE products (
     id BIGSERIAL PRIMARY KEY,
-    category_id BIGINT NOT NULL,
+    category product_category NOT NULL,
     slug VARCHAR(255) NOT NULL UNIQUE,
     name_idn VARCHAR(255) NOT NULL,
     name_en VARCHAR(255) NOT NULL,
@@ -109,15 +101,11 @@ CREATE TABLE products (
     description_en TEXT NOT NULL,
 
     created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-
-    CONSTRAINT fk_products_category
-        FOREIGN KEY (category_id)
-        REFERENCES product_categories(id)
+    updated_at TIMESTAMP NOT NULL
 );
 
-CREATE INDEX idx_products_category_id
-    ON products(category_id);
+CREATE INDEX idx_products_category
+    ON products(category);
 
 -- ============================================
 -- PRODUCT IMAGES
@@ -164,12 +152,19 @@ CREATE INDEX idx_product_excellences_product_id
 -- PRODUCT SPECIFICATIONS
 -- ============================================
 
+-- ============================================
+-- PRODUCT SPECIFICATIONS
+-- ============================================
+
 CREATE TABLE product_specifications (
     id BIGSERIAL PRIMARY KEY,
     product_id BIGINT NOT NULL,
+
     name_idn VARCHAR(255) NOT NULL,
     name_en VARCHAR(255) NOT NULL,
-    value TEXT NOT NULL,
+
+    value_idn TEXT NOT NULL,
+    value_en TEXT NOT NULL,
 
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL,

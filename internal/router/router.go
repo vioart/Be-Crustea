@@ -10,17 +10,25 @@ import (
 )
 
 type Handlers struct {
-	Auth        *handler.AuthHandler
-	News        *handler.NewsHandler
-	Product     *handler.ProductHandler
-	FAQ         *handler.FAQHandler
-	Partnership *handler.PartnershipHandler
+	Auth         *handler.AuthHandler
+	User         *handler.UserHandler
+	News         *handler.NewsHandler
+	NewsCategory *handler.NewsCategoryHandler
+	Product      *handler.ProductHandler
+	FAQ          *handler.FAQHandler
+	Partnership  *handler.PartnershipHandler
 }
 
 func Setup(h Handlers, jwtSecret string) *gin.Engine {
 	r := gin.Default()
 
 	r.Use(middleware.CORS())
+
+	// ============================================
+	// STATIC FILES
+	// ============================================
+
+	r.Static("/uploads", "./storage")
 
 	// ============================================
 	// HEALTH CHECK
@@ -43,7 +51,22 @@ func Setup(h Handlers, jwtSecret string) *gin.Engine {
 	{
 		auth.POST("/register", h.Auth.Register)
 		auth.POST("/login", h.Auth.Login)
-		auth.GET("/me", middleware.AuthRequired(jwtSecret), h.Auth.Me)
+
+		auth.GET(
+			"/me",
+			middleware.AuthRequired(jwtSecret),
+			h.Auth.Me,
+		)
+	}
+
+	// ============================================
+	// PUBLIC NEWS CATEGORIES
+	// ============================================
+
+	newsCategories := api.Group("/news-categories")
+	{
+		newsCategories.GET("", h.NewsCategory.GetAll)
+		newsCategories.GET("/:id", h.NewsCategory.GetByID)
 	}
 
 	// ============================================
@@ -96,20 +119,52 @@ func Setup(h Handlers, jwtSecret string) *gin.Engine {
 	admin.Use(middleware.AuthRequired(jwtSecret))
 
 	// --------------------------------------------
+	// Users
+	// --------------------------------------------
+
+	admin.GET("/users", h.User.GetAll)
+	admin.GET("/users/:id", h.User.GetByID)
+	admin.POST("/users", h.User.Create)
+	admin.PUT("/users/:id", h.User.Update)
+	admin.DELETE("/users/:id", h.User.Delete)
+
+	// --------------------------------------------
+	// News Categories
+	// --------------------------------------------
+
+	admin.GET("/news-categories", h.NewsCategory.GetAll)
+	admin.GET("/news-categories/:id", h.NewsCategory.GetByID)
+	admin.POST("/news-categories", h.NewsCategory.Create)
+	admin.PUT("/news-categories/:id", h.NewsCategory.Update)
+	admin.DELETE("/news-categories/:id", h.NewsCategory.Delete)
+
+	// --------------------------------------------
 	// News
 	// --------------------------------------------
 
+	admin.GET("/news", h.News.GetAll)
+	admin.GET("/news/:slug", h.News.GetBySlug)
+
 	admin.POST("/news", h.News.Create)
-	admin.PUT("/news/:id", h.News.Update)
-	admin.DELETE("/news/:id", h.News.Delete)
+	admin.POST("/news/content-image", h.News.UploadContentImage)
+	admin.POST("/news/content-image/import", h.News.ImportContentImage)
+
+	admin.PUT("/news/:slug", h.News.UpdateBySlug)
+	admin.DELETE("/news/:slug", h.News.DeleteBySlug)
 
 	// --------------------------------------------
 	// Products
 	// --------------------------------------------
 
+	// Get products by category
+	admin.GET("/products/hardware", h.Product.GetHardware)
+	admin.GET("/products/software", h.Product.GetSoftware)
+	admin.GET("/products/processed-product", h.Product.GetProcessedProducts)
+
+	admin.GET("/products/:slug", h.Product.GetBySlug)
 	admin.POST("/products", h.Product.Create)
-	admin.PUT("/products/:id", h.Product.Update)
-	admin.DELETE("/products/:id", h.Product.Delete)
+	admin.PUT("/products/:slug", h.Product.UpdateBySlug)
+	admin.DELETE("/products/:slug", h.Product.DeleteBySlug)
 
 	// --------------------------------------------
 	// FAQs
@@ -125,20 +180,21 @@ func Setup(h Handlers, jwtSecret string) *gin.Engine {
 	// Partnership Projects
 	// --------------------------------------------
 
-	admin.POST(
-		"/partnership-projects",
-		h.Partnership.Create,
-	)
+	admin.POST("/partnership-projects", h.Partnership.Create)
+	admin.PUT("/partnership-projects/:id", h.Partnership.Update)
+	admin.DELETE("/partnership-projects/:id", h.Partnership.Delete)
 
-	admin.PUT(
-		"/partnership-projects/:id",
-		h.Partnership.Update,
-	)
+	// ============================================
+	// ACCOUNT SETTINGS
+	// ============================================
 
-	admin.DELETE(
-		"/partnership-projects/:id",
-		h.Partnership.Delete,
-	)
+	account := api.Group("/account")
+	account.Use(middleware.AuthRequired(jwtSecret))
+	{
+		account.GET("/me", h.User.GetMyAccount)
+		account.PUT("/me", h.User.UpdateMyAccount)
+		account.PUT("/me/password", h.User.ChangeMyPassword)
+	}
 
 	return r
 }

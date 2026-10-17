@@ -14,12 +14,13 @@ import (
 )
 
 var (
-	ErrNewsNotFound = errors.New("news not found")
-	ErrInvalidNews  = errors.New("invalid news data")
+	ErrNewsNotFound   = errors.New("news not found")
+	ErrInvalidNews    = errors.New("invalid news data")
+	ErrNewsSlugExists = errors.New("news slug already exists")
 )
 
 type NewsService interface {
-	GetAll(ctx context.Context, limit, offset int) ([]model.News, error)
+	GetAll(ctx context.Context) ([]model.News, error)
 	GetByID(ctx context.Context, id int64) (*model.News, error)
 	GetBySlug(ctx context.Context, slug string) (*model.News, error)
 	Create(ctx context.Context, news *model.News) error
@@ -41,21 +42,8 @@ func NewNewsService(
 
 func (s *newsService) GetAll(
 	ctx context.Context,
-	limit, offset int,
 ) ([]model.News, error) {
-	if limit <= 0 {
-		limit = 10
-	}
-
-	if limit > 100 {
-		limit = 100
-	}
-
-	if offset < 0 {
-		offset = 0
-	}
-
-	news, err := s.newsRepository.GetAll(ctx, limit, offset)
+	news, err := s.newsRepository.GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get news: %w", err)
 	}
@@ -133,6 +121,10 @@ func (s *newsService) Create(
 	}
 
 	if err := s.newsRepository.Create(ctx, news); err != nil {
+		if strings.Contains(err.Error(), "news_slug_key") {
+			return ErrNewsSlugExists
+		}
+
 		return fmt.Errorf("failed to create news: %w", err)
 	}
 

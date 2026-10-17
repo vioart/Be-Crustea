@@ -17,6 +17,11 @@ type UserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	Create(ctx context.Context, user *model.User) error
 	Update(ctx context.Context, user *model.User) error
+	UpdatePassword(
+		ctx context.Context,
+		id int64,
+		hashedPassword string,
+	) error
 	Delete(ctx context.Context, id int64) error
 }
 
@@ -57,7 +62,7 @@ func (r *postgresUserRepository) GetAll(
 	for rows.Next() {
 		var user model.User
 
-		err := rows.Scan(
+		if err := rows.Scan(
 			&user.ID,
 			&user.Name,
 			&user.Email,
@@ -65,8 +70,7 @@ func (r *postgresUserRepository) GetAll(
 			&user.Avatar,
 			&user.CreatedAt,
 			&user.UpdatedAt,
-		)
-		if err != nil {
+		); err != nil {
 			return nil, fmt.Errorf("failed to scan user: %w", err)
 		}
 
@@ -239,6 +243,38 @@ func (r *postgresUserRepository) Update(
 		}
 
 		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return nil
+}
+
+// UpdatePassword hanya memperbarui hash password dan updated_at.
+// Field profil lain tidak diubah.
+func (r *postgresUserRepository) UpdatePassword(
+	ctx context.Context,
+	id int64,
+	hashedPassword string,
+) error {
+	const query = `
+		UPDATE users
+		SET
+			password = $1,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $2
+	`
+
+	result, err := r.db.Exec(
+		ctx,
+		query,
+		hashedPassword,
+		id,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return pgx.ErrNoRows
 	}
 
 	return nil

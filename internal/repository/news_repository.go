@@ -12,7 +12,7 @@ import (
 )
 
 type NewsRepository interface {
-	GetAll(ctx context.Context, limit, offset int) ([]model.News, error)
+	GetAll(ctx context.Context) ([]model.News, error)
 	GetByID(ctx context.Context, id int64) (*model.News, error)
 	GetBySlug(ctx context.Context, slug string) (*model.News, error)
 	Create(ctx context.Context, news *model.News) error
@@ -32,29 +32,27 @@ func NewNewsRepository(db *pgxpool.Pool) NewsRepository {
 
 func (r *postgresNewsRepository) GetAll(
 	ctx context.Context,
-	limit, offset int,
 ) ([]model.News, error) {
 	const query = `
-		SELECT
-			id,
-			category_id,
-			author_id,
-			slug,
-			thumbnail,
-			title_idn,
-			title_en,
-			content_idn,
-			content_en,
-			status,
-			published_at,
-			created_at,
-			updated_at
-		FROM news
-		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2
-	`
+        SELECT
+            id,
+            category_id,
+            author_id,
+            slug,
+            thumbnail,
+            title_idn,
+            title_en,
+            content_idn,
+            content_en,
+            status,
+            published_at,
+            created_at,
+            updated_at
+        FROM news
+        ORDER BY created_at DESC
+    `
 
-	rows, err := r.db.Query(ctx, query, limit, offset)
+	rows, err := r.db.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query news: %w", err)
 	}
