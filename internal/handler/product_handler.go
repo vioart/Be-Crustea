@@ -138,16 +138,16 @@ func (h *ProductHandler) getProductsByCategory(c *gin.Context, category string) 
 	c.JSON(http.StatusOK, gin.H{"data": products})
 }
 
-func (h *ProductHandler) GetHardware(c *gin.Context) {
-	h.getProductsByCategory(c, service.ProductCategoryHardware)
+func (h *ProductHandler) GetTechnology(c *gin.Context) {
+	h.getProductsByCategory(c, service.ProductCategoryTechnology)
 }
 
-func (h *ProductHandler) GetSoftware(c *gin.Context) {
-	h.getProductsByCategory(c, service.ProductCategorySoftware)
+func (h *ProductHandler) GetKrasty(c *gin.Context) {
+	h.getProductsByCategory(c, service.ProductCategoryKrasty)
 }
 
-func (h *ProductHandler) GetProcessedProducts(c *gin.Context) {
-	h.getProductsByCategory(c, service.ProductCategoryProcessedProduct)
+func (h *ProductHandler) GetTrading(c *gin.Context) {
+	h.getProductsByCategory(c, service.ProductCategoryTrading)
 }
 
 func (h *ProductHandler) GetByID(c *gin.Context) {
@@ -576,18 +576,65 @@ func (h *ProductHandler) DeleteBySlug(c *gin.Context) {
 		return
 	}
 
-	if err := h.productService.DeleteBySlug(
-		c.Request.Context(),
-		slug,
-	); err != nil {
+	ctx := c.Request.Context()
+
+	// Ambil produk beserta daftar gambar sebelum data dihapus.
+	product, err := h.productService.GetBySlug(ctx, slug)
+	if err != nil {
 		if errors.Is(err, service.ErrProductNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"message": "product not found"})
+			c.JSON(http.StatusNotFound, gin.H{
+				"message": "product not found",
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "failed to get product before deletion",
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Hapus produk beserta data relasinya di database.
+	if err := h.productService.DeleteBySlug(ctx, slug); err != nil {
+		if errors.Is(err, service.ErrProductNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"message": "product not found",
+			})
 			return
 		}
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "failed to delete product",
 			"error":   err.Error(),
+		})
+		return
+	}
+
+	// Hapus file gambar fisik setelah database berhasil dihapus.
+	var failedFiles []string
+
+	if h.productStorage != nil {
+		for _, image := range product.Images {
+			if err := h.productStorage.Delete(image.FileURL); err != nil {
+				failedFiles = append(failedFiles, image.FileURL)
+
+				// Catat error untuk logging middleware Gin.
+				_ = c.Error(fmt.Errorf(
+					"failed to delete product image %q: %w",
+					image.FileURL,
+					err,
+				))
+			}
+		}
+	} else if len(product.Images) > 0 {
+		failedFiles = append(failedFiles, "product storage is not configured")
+	}
+
+	if len(failedFiles) > 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "product deleted, but some image files could not be deleted",
+			"warning": failedFiles,
 		})
 		return
 	}

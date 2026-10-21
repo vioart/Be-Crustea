@@ -26,9 +26,9 @@ const (
 )
 
 const (
-	ProductCategoryHardware         = "hardware"
-	ProductCategorySoftware         = "software"
-	ProductCategoryProcessedProduct = "processed_product"
+	ProductCategoryTechnology = "technology"
+	ProductCategoryKrasty     = "krasty"
+	ProductCategoryTrading    = "trading"
 )
 
 type ProductDetail struct {
@@ -133,7 +133,7 @@ func (s *productService) GetByCategory(
 
 	if !isValidProductCategory(category) {
 		return nil, fmt.Errorf(
-			"%w: category must be hardware, software, or processed_product",
+			"%w: category must be technology, krasty, or trading",
 			ErrInvalidProduct,
 		)
 	}
@@ -554,11 +554,12 @@ func normalizeProduct(product *model.Product) {
 }
 
 // isValidProductCategory memeriksa kategori yang diperbolehkan.
+
 func isValidProductCategory(category string) bool {
 	switch category {
-	case ProductCategoryHardware,
-		ProductCategorySoftware,
-		ProductCategoryProcessedProduct:
+	case ProductCategoryTechnology,
+		ProductCategoryKrasty,
+		ProductCategoryTrading:
 		return true
 	default:
 		return false
@@ -607,9 +608,10 @@ func (s *productService) invalidateProductCache(ctx context.Context) error {
 
 // validateProduct memvalidasi data utama produk.
 func validateProduct(product *model.Product) error {
+
 	if !isValidProductCategory(product.Category) {
 		return fmt.Errorf(
-			"%w: category must be hardware, software, or processed_product",
+			"%w: category must be technology, krasty, or trading",
 			ErrInvalidProduct,
 		)
 	}

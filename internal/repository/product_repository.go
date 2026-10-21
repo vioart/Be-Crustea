@@ -800,15 +800,63 @@ func (r *postgresProductRepository) DeleteBySlug(
 	ctx context.Context,
 	slug string,
 ) error {
-	const query = `DELETE FROM products WHERE slug = $1`
-
-	result, err := r.db.Exec(ctx, query, slug)
+	tx, err := r.db.Begin(ctx)
 	if err != nil {
+		return fmt.Errorf("failed to begin product deletion transaction: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
+	// Cari ID produk berdasarkan slug.
+	var productID int64
+	err = tx.QueryRow(
+		ctx,
+		`SELECT id FROM products WHERE slug = $1`,
+		slug,
+	).Scan(&productID)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pgx.ErrNoRows
+		}
+
+		return fmt.Errorf("failed to find product: %w", err)
+	}
+
+	// Hapus data yang bergantung pada produk.
+	relatedTables := []string{
+		"product_images",
+		"product_excellences",
+		"product_specifications",
+	}
+
+	for _, table := range relatedTables {
+		query := fmt.Sprintf(
+			"DELETE FROM %s WHERE product_id = $1",
+			table,
+		)
+
+		if _, err := tx.Exec(ctx, query, productID); err != nil {
+			return fmt.Errorf(
+				"failed to delete related data from %s: %w",
+				table,
+				err,
+			)
+		}
+	}
+
+	// Hapus produk setelah data terkait dibersihkan.
+	if _, err := tx.Exec(
+		ctx,
+		`DELETE FROM products WHERE id = $1`,
+		productID,
+	); err != nil {
 		return fmt.Errorf("failed to delete product: %w", err)
 	}
 
-	if result.RowsAffected() == 0 {
-		return pgx.ErrNoRows
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit product deletion: %w", err)
 	}
 
 	return nil

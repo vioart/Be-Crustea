@@ -19,9 +19,9 @@ CREATE TYPE faq_category AS ENUM (
 );
 
 CREATE TYPE product_category AS ENUM (
-    'hardware',
-    'software',
-    'processed_product'
+    'technology',
+    'krasty',
+    'trading'
 );
 
 -- ============================================

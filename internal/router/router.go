@@ -157,9 +157,9 @@ func Setup(h Handlers, jwtSecret string) *gin.Engine {
 	// --------------------------------------------
 
 	// Get products by category
-	admin.GET("/products/hardware", h.Product.GetHardware)
-	admin.GET("/products/software", h.Product.GetSoftware)
-	admin.GET("/products/processed-product", h.Product.GetProcessedProducts)
+	admin.GET("/products/technology", h.Product.GetTechnology)
+	admin.GET("/products/krasty", h.Product.GetKrasty)
+	admin.GET("/products/trading", h.Product.GetTrading)
 
 	admin.GET("/products/:slug", h.Product.GetBySlug)
 	admin.POST("/products", h.Product.Create)
