@@ -8,10 +8,12 @@ import (
 
 func CORS() gin.HandlerFunc {
 	allowedOrigins := map[string]bool{
-		"http://localhost:3000": true,
-		"http://127.0.0.1:3000": true,
-		"http://localhost:5173": true,
-		"http://127.0.0.1:5173": true,
+		"http://localhost:3000":  true,
+		"http://127.0.0.1:3000":  true,
+		"http://localhost:5173":  true,
+		"http://127.0.0.1:5173":  true,
+		"https://crustea.id":     true,
+		"https://www.crustea.id": true,
 	}
 
 	return func(c *gin.Context) {
